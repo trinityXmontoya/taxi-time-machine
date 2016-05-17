@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script defer src="https://code.getmdl.io/1.1.3/material.min.js"></script>
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel=
+            "stylesheet">
+        <link href="https://code.getmdl.io/1.1.3/material.yellow-deep_purple.min.css"
+            rel="stylesheet">
+        <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+        <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+
+        <script src="http://code.jquery.com/jquery-1.11.0.js"></script>
+
+    <script src="https://cdn.rawgit.com/hallahan/LeafletPlayback/master/dist/LeafletPlayback.min.js"></script>
+    <!-- <script src="https://cdn.rawgit.com/hallahan/LeafletPlayback/master/data/demo/demo-tracks.js"></script> -->
+        <title></title>
+    </head>
+    <style>
+        /*sticky footer*/
+        .mdl-mini-footer {
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1
+        }
+        .page-content {
+        height: 100%;
+        width: 100%;
+        z-index: 1;
+        }
+        .landing, .content {
+        text-align: center;
+        height: 46vw;
+        }
+        .landing {display: none;}
+        .landing-content {
+          color: black;
+        position: relative;
+        top: 50%;
+        transform: translateY(-50%);
+        }
+        .landing::before {
+          content: "";
+          position: fixed;
+          left: 0;
+          right: 0;
+          z-index: -1;
+          display: block;
+          background: url('https://images.unsplash.com/photo-1428546312530-9b556efe5a78?format=auto&auto=compress&dpr=1&crop=entropy&fit=crop&w=1521&h=1014&q=80') center / cover;
+          height: 100%;
+          width: 100%;
+          -webkit-filter: opacity(42%) saturate(50%);
+          -moz-filter: opacity(42%);
+          -o-filter: opacity(42%);
+          -ms-filter: opacity(42%);
+          filter: opacity(42%);
+          background-color: rgb(103, 58, 183);
+          background-blend-mode: luminosity;
+        }
+        .svg-container {    height: 4rem;}
+        /*.content {display: none;}*/
+        #mapid { height: 500px; }
+    </style>
+    <script>
+
+// [40.761118, -73.990734], [40.729443, -74.001753]
+// [40.721077,  -73.99753], [40.761793, -73.982576]
+// [40.762926, -73.971634],  [40.735628,  -73.996969]
+
+    var t1 = {
+      "type":"Feature",
+      "geometry": {
+        "type": "MultiPoint",
+        "coordinates": [
+          [-73.993694, 40.721145],  [-74.008103, 40.738951]
+        ]
+      },
+      "properties": {
+        "title": "t1",
+        "path_options":{"color":"red"},
+        "time": [1388892443,1388893332]
+      }
+    }
+    var t2 = {
+      "type":"Feature",
+      "geometry": {
+        "type": "MultiPoint",
+        "coordinates": [
+          [-73.990734, 40.761118], [ -74.001753, 40.729443]
+        ]
+      },
+      "properties": {
+        "title": "t2",
+        "path_options":{"color":"red"},
+        "time": [1388891983,1388892519]
+      }
+    }
+    var t3 = {
+      "type":"Feature",
+      "geometry": {
+        "type": "MultiPoint",
+        "coordinates": [
+          [-73.99753, 40.721077], [-73.982576, 40.761793]
+
+        ]
+      },
+      "properties": {
+        "title": "t3",
+        "path_options":{"color":"red"},
+        "time": [1388892331, 1388892970]
+      }
+    }
+    var t4 = {
+      "type":"Feature",
+      "geometry": {
+        "type": "MultiPoint",
+        "coordinates": [
+          [-73.971634, 40.762926],  [-73.996969, 40.735628]
+        ]
+      },
+      "properties": {
+        "title": "t4",
+        "path_options":{"color":"red"},
+        "time": [1388892382,1388893055]
+      }
+    }
+    var demoTracks = [t1, t2, t3, t4];
+
+
+
+        function loadBtnListener(){
+          document.getElementsByClassName("explore-btn")[0].onclick = function(){
+            document.getElementsByClassName("landing")[0].style.display = "none";
+            document.getElementsByClassName("content")[0].style.display = "block";
+          }
+        }
+
+        function loadMap(demoTracks){
+          var mymap = L.map('mapid').setView([40.7298, -73.9867], 12);
+          L.tileLayer('http://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            // id: 'your.mapbox.project.id',
+            // accessToken: 'your.mapbox.public.access.token'
+        }).addTo(mymap);
+
+        var playbackOptions = {
+            playControl: true,
+            dateControl: true,
+            sliderControl: true
+        };
+
+        // Initialize playback
+        var playback = new L.Playback(mymap, demoTracks, null, playbackOptions);
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+          loadBtnListener()
+          loadMap(demoTracks)
+        });
+    </script>
+    <body>
+        <main class="mdl-layout__content page-content">
+            <!-- <div class="page-content"> -->
+
+            <div class="content">
+              <div class="mdl-grid">
+                  <div class="mdl-cell mdl-cell--12-col">
+                <div id="mapid"></div>
+                </div>
+                    </div>
+            </div>
+            <div class="landing">
+                <div class="landing-content">
+                  <div class="svg-container">
+                  <svg width="100%" height="100%" viewBox="0 0 69 31" xmlns="http://www.w3.org/2000/svg">
+    <g fill="currentColor" fill-rule="evenodd">
+        <path d="M26.5 31c-3 0-5.5-2.5-5.5-5.5s2.5-5.5 5.5-5.5 5.5 2.5 5.5 5.5-2.5 5.5-5.5 5.5zm0-9c-1.9 0-3.5 1.6-3.5 3.5s1.6 3.5 3.5 3.5 3.5-1.6 3.5-3.5-1.6-3.5-3.5-3.5z"/>
+        <path d="M26.5 27c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5zm0-2c-.3 0-.5.2-.5.5s.2.5.5.5.5-.2.5-.5-.2-.5-.5-.5zm37.4 1H61v-2h2.9c.6-.1 1.9-2.3 2.1-3.2.4-1.6-.1-2.8-.5-3.4-.6-.9-1.3-1.3-1.7-1.3-1.2-.2-3.1-.6-5-.9-2.4-.5-5.5-1-5.9-1.1v-2c.3 0 1.3.2 6.2 1.1 1.9.4 3.8.7 5 .9 1.1.2 2.2 1.1 3 2.2.7 1 1.3 2.7.8 5-.1.7-1.8 4.7-4 4.7z"/>
+        <path d="M22 26h-3c-2.8 0-5-2.2-5-5v-4c0-2.8 2.2-5 5-5h4.4l2-4.1C26.6 5.5 29.1 4 31.8 4h12.9c2.4 0 4.6 1.2 5.9 3.3l3.2 5.2-1.7 1.1-3.2-5.2C48 6.9 46.4 6 44.7 6H31.8c-2 0-3.7 1.1-4.6 2.8L24.6 14H19c-1.7 0-3 1.3-3 3v4c0 1.7 1.3 3 3 3h3v2zm34.5 5c-3 0-5.5-2.5-5.5-5.5s2.5-5.5 5.5-5.5 5.5 2.5 5.5 5.5-2.5 5.5-5.5 5.5zm0-9c-1.9 0-3.5 1.6-3.5 3.5s1.6 3.5 3.5 3.5 3.5-1.6 3.5-3.5-1.6-3.5-3.5-3.5z"/>
+        <path d="M56.5 27c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5zm0-2c-.3 0-.5.2-.5.5s.2.5.5.5.5-.2.5-.5-.2-.5-.5-.5zM53 14H39V7h10l.33 2H41v3h12v2z"/>
+        <path d="M40 14h-9.1c-.8 0-1.4-.4-1.8-1.1-.4-.7-.4-1.5 0-2.1l1.5-2.5C31.1 7.5 32 7 32.9 7H40v2h-7.1c-.2 0-.5.1-.6.3l-1.5 2.5.1.1H40V14zm-9 10h20.302L51 26H31v-2zm-16-8h3v2h-3v-2zm48 2h4v2h-4v-2zm-27-1h2v2h-2v-2zm2 2h2v2h-2v-2zm2-2h2v2h-2v-2zm4 0h2v2h-2v-2zM42 19h2v2h-2zM45 5h-2V3c0-.5-.5-1-1.2-1h-5.6c-.6 0-1.2.4-1.2 1v2h-2V3c0-1.6 1.4-3 3.2-3h5.6C43.6 0 45 1.3 45 3v2zM5 18h6v2H5zM0 13h9v2H0zM5 8h14v2H5z"/>
+    </g>
+</svg>
+</div>
+
+                    <h2>NYC TAXI TIME MACHINE</h2>
+                    <p>NYC 2015 Taxi Replay</p>
+                    <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored explore-btn">
+                    Explore
+                    </button>
+                </div>
+            </div>
+            <!-- </div> -->
+        </main>
+        <!-- Taxi by Yaroslav Samoilov from the Noun Project -->
+        <!-- <footer class="mdl-mini-footer">
+            <div class="mdl-mini-footer__left-section">
+            	<div class="mdl-logo">Taxi Time Machine</div>
+            	<ul class="mdl-mini-footer__link-list">
+            		<li><a href="https://github.com/trinityXmontoya/taxi-time-machine">Repo</a></li>
+            		<li><a href="trinityxmontoya.github.io">About</a></li>
+            	</ul>
+            </div>
+            </footer> -->
+    </body>
+</html>
