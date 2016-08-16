@@ -6,10 +6,8 @@
                  [http-kit "2.1.18"]
                  [environ "1.0.3"]
                  [com.taoensso/timbre "4.3.1"]
-                 [yesql "0.5.2"]
-                 [org.postgresql/postgresql "9.4-1206-jdbc4"]
-                 [org.clojure/java.jdbc "0.4.2"]
-                 [com.zaxxer/HikariCP "2.4.3"]]
+                 [cheshire "5.6.3"]
+                 [clj-kafka "0.3.4"]]
   :plugins [[lein-ring "0.9.7"]
             [lein-environ "1.0.3"]]
   :ring {:handler taxi-time-machine.core/handler}

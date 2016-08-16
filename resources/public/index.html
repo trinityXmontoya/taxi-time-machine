@@ -11,8 +11,6 @@
 
         <script src="http://code.jquery.com/jquery-1.11.0.js"></script>
 
-    <script src="https://cdn.rawgit.com/hallahan/LeafletPlayback/master/dist/LeafletPlayback.min.js"></script>
-    <!-- <script src="https://cdn.rawgit.com/hallahan/LeafletPlayback/master/data/demo/demo-tracks.js"></script> -->
         <title></title>
     </head>
     <style>
@@ -64,70 +62,6 @@
     </style>
     <script>
 
-// [40.761118, -73.990734], [40.729443, -74.001753]
-// [40.721077,  -73.99753], [40.761793, -73.982576]
-// [40.762926, -73.971634],  [40.735628,  -73.996969]
-
-    var t1 = {
-      "type":"Feature",
-      "geometry": {
-        "type": "MultiPoint",
-        "coordinates": [
-          [-73.993694, 40.721145],  [-74.008103, 40.738951]
-        ]
-      },
-      "properties": {
-        "title": "t1",
-        "path_options":{"color":"red"},
-        "time": [1388892443,1388893332]
-      }
-    }
-    var t2 = {
-      "type":"Feature",
-      "geometry": {
-        "type": "MultiPoint",
-        "coordinates": [
-          [-73.990734, 40.761118], [ -74.001753, 40.729443]
-        ]
-      },
-      "properties": {
-        "title": "t2",
-        "path_options":{"color":"red"},
-        "time": [1388891983,1388892519]
-      }
-    }
-    var t3 = {
-      "type":"Feature",
-      "geometry": {
-        "type": "MultiPoint",
-        "coordinates": [
-          [-73.99753, 40.721077], [-73.982576, 40.761793]
-
-        ]
-      },
-      "properties": {
-        "title": "t3",
-        "path_options":{"color":"red"},
-        "time": [1388892331, 1388892970]
-      }
-    }
-    var t4 = {
-      "type":"Feature",
-      "geometry": {
-        "type": "MultiPoint",
-        "coordinates": [
-          [-73.971634, 40.762926],  [-73.996969, 40.735628]
-        ]
-      },
-      "properties": {
-        "title": "t4",
-        "path_options":{"color":"red"},
-        "time": [1388892382,1388893055]
-      }
-    }
-    var demoTracks = [t1, t2, t3, t4];
-
-
 
         function loadBtnListener(){
           document.getElementsByClassName("explore-btn")[0].onclick = function(){
@@ -136,28 +70,19 @@
           }
         }
 
-        function loadMap(demoTracks){
+        function loadMap(){
           var mymap = L.map('mapid').setView([40.7298, -73.9867], 12);
           L.tileLayer('http://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png', {
             maxZoom: 18,
             attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             // id: 'your.mapbox.project.id',
             // accessToken: 'your.mapbox.public.access.token'
-        }).addTo(mymap);
+        }).addTo(mymap);}
 
-        var playbackOptions = {
-            playControl: true,
-            dateControl: true,
-            sliderControl: true
-        };
-
-        // Initialize playback
-        var playback = new L.Playback(mymap, demoTracks, null, playbackOptions);
-        }
 
         document.addEventListener("DOMContentLoaded", function() {
           loadBtnListener()
-          loadMap(demoTracks)
+          loadMap()
         });
     </script>
     <body>
@@ -167,7 +92,7 @@
             <div class="content">
               <div class="mdl-grid">
                   <div class="mdl-cell mdl-cell--12-col">
-                <div id="mapid"></div>
+                <!-- <div id="mapid"></div> -->
                 </div>
                     </div>
             </div>
