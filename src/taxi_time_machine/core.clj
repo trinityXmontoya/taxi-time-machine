@@ -53,9 +53,13 @@
   (info "Running osrm server")
   (println "me" (:out (shell/sh "osrm-routed" "/Users/Alfred/Downloads/us-northeast-latest.osrm"))))
 
-(defn run-zookeeper
+(defn start-zookeeper
   []
-  (println "zookeeper" (:out (shell/sh "/Users/Alfred/Downloads/kafka-0.8.2.2-src/bin/zookeeper-server-start.sh" "/Users/Alfred/Downloads/kafka-0.8.2.2-src/config/zookeeper.properties"))))
+  (println "zookeeper" (:out (shell/sh "start-zk"))))
+
+(defn start-kafka
+  []
+  (println "kafka" (:out (shell/sh "start-kafka"))))
 
 (defn -main
   []
