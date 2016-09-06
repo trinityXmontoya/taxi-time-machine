@@ -1,30 +1,31 @@
 (ns taxi-time-machine.geomesa
-  (import (java.util Date)
-          (org.joda.time  DateTime
-                          DateTimeZone
-                          Duration
-                          Instant)
-          (org.geotools.data DataStore
-                              DataStoreFinder
-                              FeatureStore)
-           (org.geotools.data.simple SimpleFeatureCollection
-                                     SimpleFeatureIterator
-                                     SimpleFeatureSource
-                                     SimpleFeatureStore)
-           (org.geotools.factory CommonFactoryFinder)
-           (org.geotools.feature DefaultFeatureCollection)
-           (org.geotools.feature.simple SimpleFeatureBuilder)
-           (org.locationtech.geomesa.kafka KafkaDataStoreHelper
-                                           ReplayConfig
-                                           ReplayTimeHelper)
-           (org.locationtech.geomesa.utils.geotools SimpleFeatureTypes)
-           (org.locationtech.geomesa.utils.text WKTUtils$)
-           (org.opengis.feature Property)
-           (org.opengis.feature.simple SimpleFeature
-                                       SimpleFeatureType)
-           (org.opengis.feature.type Name)
-           (org.opengis.filter Filter
-                               FilterFactory2)))
+  (:import  (java.util Date)
+            (org.joda.time  DateTime
+                            DateTimeZone
+                            Duration
+                            Instant)
+            (org.geotools.data DataStore
+                                DataStoreFinder
+                                FeatureStore)
+             (org.geotools.data.simple SimpleFeatureCollection
+                                       SimpleFeatureIterator
+                                       SimpleFeatureSource
+                                       SimpleFeatureStore)
+             (org.geotools.factory CommonFactoryFinder)
+             (org.geotools.feature DefaultFeatureCollection)
+             (org.geotools.feature.simple SimpleFeatureBuilder)
+             (org.locationtech.geomesa.kafka KafkaDataStoreHelper
+                                             ReplayConfig
+                                             ReplayTimeHelper)
+             (org.locationtech.geomesa.utils.geotools SimpleFeatureTypes)
+             (org.locationtech.geomesa.utils.text WKTUtils$)
+             (org.opengis.feature Property)
+             (org.opengis.feature.simple SimpleFeature
+                                         SimpleFeatureType)
+             (org.opengis.feature.type Name)
+             (org.opengis.filter Filter
+                                 FilterFactory2))
+  (:gen-class))
 
 ; kafka-broker-param "brokers" "localhost:9092"
 ; zookeepers-param "zookepers" "zoo1:2181"
@@ -109,10 +110,10 @@
               (.print (System/out) (str " | " prop-name ":" (.getAttribute f prop-name))))))
           (.println (System/out)))
 
-  (defn main
+  (defn -main
     [^String[] args]
     (let [ds-conf {"brokers" "localhost:9092"
-                   "zookeepers" "zoo1:2181"
+                   "zookeepers" "localhost:2181"
                    "zkPath" "/geomesa/ds/kafka"
                    "automated" "automated"}
           producer-ds (DataStoreFinder/getDataStore (merge ds-conf {"isProducer" true}))
@@ -128,10 +129,10 @@
       ; (only needs to be done once)
       (let [sft-name "KafkaQuickStart"
             sft-schema "name:String,age:Int,dtg:Date,*geom:Point:srid=4326"
-            sft (.createType SimpleFeatureTypes sft-name sft-schema)
+            sft (SimpleFeatureTypes/createType sft-name sft-schema)
             ; set zkPath to default if not specified
             zk-path (or (ds-conf "zkPath") "/geomesa/ds/kafka")
-            prepped-output-sft (.createStreamingSFT KafkaDataStoreHelper sft zk-path)
+            prepped-output-sft (KafkaDataStoreHelper/createStreamingSFT sft zk-path)
             ; the live consumer must be created before the producer writes features
             ; in order to read streaming data.
             ; i.e. the live consumer will only read data written after its instantiation

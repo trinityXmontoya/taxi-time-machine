@@ -12,10 +12,12 @@
                  [org.clojure/data.csv "0.1.3"]
                  [clj-time "0.12.0"]
                  [org.locationtech.geomesa/geomesa-kafka-datastore "1.2.5"
-                    :exclusions [[org.scala-lang.modules/scala-xml_2.11]
-                                  [org.scala-lang/scala-library]
-                                  [org.scala-lang.modules/scala-parser-combinators_2.11]
-                                  [com.typesafe.scala-logging/scala-logging_2.11]]]
+                    :exclusions [
+                    ; [org.scala-lang.modules/scala-xml_2.11]
+                                  ; [org.scala-lang/scala-library]
+                                  ; [org.scala-lang.modules/scala-parser-combinators_2.11]
+                                  ; [com.typesafe.scala-logging/scala-logging_2.11]
+                                  ]]
                 ;  [org.locationtech.geomesa/geomesa-utils "1.2.5"
                 ;   :exclusions [[org.scala-lang.modules/scala-parser-combinators_2.11]
                 ;                [org.scala-lang/scala-library]
