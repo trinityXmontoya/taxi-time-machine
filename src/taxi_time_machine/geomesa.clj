@@ -133,6 +133,8 @@
             ; set zkPath to default if not specified
             zk-path (or (ds-conf "zkPath") "/geomesa/ds/kafka")
             prepped-output-sft (KafkaDataStoreHelper/createStreamingSFT sft zk-path)
+            ; only create the schema if it hasn't been created already
+            x (if (not (contains? (vector (.getTypeNames producer-ds)) sft-name)) (.createSchema producer-ds prepped-output-sft))
             ; the live consumer must be created before the producer writes features
             ; in order to read streaming data.
             ; i.e. the live consumer will only read data written after its instantiation

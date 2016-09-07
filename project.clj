@@ -7,7 +7,6 @@
                  [environ "1.0.3"]
                  [com.taoensso/timbre "4.3.1"]
                  [cheshire "5.6.3"]
-                 [clj-kafka "0.3.4"]
                  [clojure-csv/clojure-csv "2.0.1"]
                  [org.clojure/data.csv "0.1.3"]
                  [clj-time "0.12.0"]
@@ -27,7 +26,9 @@
                 ;  [org.geotools/gt-epsg-wkt "14.1"]
                 ;  [org.geotools/gt-epsg-hsql "14.1"]
                 ;  [org.geotools/gt-opengis "14.1"]
-
+                [clj-kafka "0.3.4" :exclusions [[org.slf4j/*]]]
+                ; [org.slf4j/slf4j-api "1.7.7"]
+                ; [commons-codec "1.9"]
                  ]
   :plugins [[lein-ring "0.9.7"]
             [lein-environ "1.0.3"]
