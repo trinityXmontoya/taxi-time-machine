@@ -86,7 +86,7 @@
     (let [builder (SimpleFeatureBuilder. sft)
           feature-collection (DefaultFeatureCollection.)
           identifier "1000"]
-      (.add builder "Antonius")
+      (.add builder "Antoniuzzs")
       (.add builder (int (Math/round (* (rand) 110))))
       (.add builder (Date.))
       (.add builder (.read WKTUtils$/MODULE$ "POINT(-1 -1)"))
@@ -94,7 +94,7 @@
         (.add feature-collection feature)
         (.addFeatures producerfs feature-collection)
         (let [^FilterFactory2 ff (CommonFactoryFinder/getFilterFactory2)
-              ^Filter id-filter (.id ff (.featureId ff identifier))]
+              ^Filter id-filter (.id ff (into-array [(.featureId ff identifier)]))]
           (.removeFeatures producerfs id-filter)))))
 
   (defn print-feature
@@ -102,7 +102,7 @@
     [^SimpleFeature f]
     (let [props (.iterator (.getProperties f))
           prop-count (.getAttributeCount f)]
-          (println (str "fid: " (.getId f)))
+          (println (str "fid: " (.getID f)))
           (loop [i prop-count]
             (let [prop-name (.getName (.next props))]
               (println (str " | " prop-name ":" (.getAttribute f prop-name)))))))
@@ -185,7 +185,7 @@
                     feature-collection (.getFeatures replay-consumer-fs (ReplayTimeHelper/toFilter query-time))]
 
                 (println (str (.size feature-collection) " features were written to Kafka"))
-                (println"Here are the two SimpleFeatures that were obtained with the replay consumer:")
+                (println "Here are the two SimpleFeatures that were obtained with the replay consumer:")
 
                 (let [feature-iterator (.features feature-collection)
                       feature1 (.next feature-iterator)
