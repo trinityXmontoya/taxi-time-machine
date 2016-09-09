@@ -27,16 +27,41 @@
                                  FilterFactory2))
   (:gen-class))
 
-; kafka-broker-param "brokers" "localhost:9092"
-; zookeepers-param "zookepers" "zoo1:2181"
-; zk-path "zkPath" "/geomesa/ds/kafka"
-; kafka-connection-params ["brokers" "zookeepers" "zkpath"]
-;
-; kafka-datastore-conf
-; {"brokers" "localhost:9092"
-; "zookeepers" "zoo1:2181"
-; "zkPath" "/geomesa/ds/kafka"
-; "automated" "automated"}
+(def kafka-datastore-conf
+  {"brokers" "localhost:9092"
+  "zookeepers" "localhost:2181"
+  "zkPath" "/geomesa/ds/kafka"
+  "automated" "automated"})
+
+(def trip-schema
+  (str "name:String,"
+        "age:Int,"
+        "dtg:Date,"
+        "*geom:Point:srid=4326"))
+
+(defn build-simple-feature
+  "build SimpleFeature"
+  [^SimpleFeatureType sft attrs]
+  (let [builder (SimpleFeatureBuilder. sft)]
+    (.apply builder
+      (loop [attr attrs]
+        (.set (str attr) attr)))
+    (.buildFeature builder)))
+
+(defn add-simple-feature
+  "add a SimpleFeature to the producer"
+  [^SimpleFeatureType sft
+   ^FeatureStore producerfs
+   attrs]
+  (let [sf (build-simple-feature sft attrs)]
+    
+  ))
+
+
+  :vendor-id :pickup-datetime :dropoff-datetime :passenger-count
+                :trip-dist :pickup-lng :pickup-lat :rate-code-id :store-and-fwd-flag
+                :dropoff-lng :dropoff-lat :payment-type :fare-amt :extra :mta-tax
+                :tip-amt :tolls-amt :total-amt
 
 (defn add-simple-features
   "add a SimpleFeature to the producer every half second"
@@ -195,5 +220,5 @@
                       (print-feature feature2)
 
                   (if (not (nil? (System/getProperty "clear")))
-                    (.removeFeatures producer-fs (.INCLUDE Filter))
-                  ))))))))))))
+                    (.removeFeatures producer-fs (.INCLUDE Filter)))
+                  (System/exit 0))))))))))))
