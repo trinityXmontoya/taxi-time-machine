@@ -7,8 +7,9 @@
             [ring.middleware.not-modified :refer [wrap-not-modified]]
             [clojure.java.io :as io]
             [cheshire.core :as json]
-            [clj-kafka.producer :as kf-producer]
-            [clj-kafka.admin :as kf-admin]
+            ; [clj-kafka.new.producer :as kf-producer]
+            ; [clj-kafka.admin :as kf-admin]
+            [kafka-clj.client :as kafka]
             [clojure.java.shell :as shell])
   ; (:import [org.geotools.data DataStoreFinder])
   (:gen-class))
@@ -57,19 +58,20 @@
 ;
 ; ; KAFKA
 ;
-(def producer-conf (kf-producer/producer {"metadata.broker.list" "localhost:9092"
-                  "serializer.class" "kafka.serializer.DefaultEncoder"
-                  "partitioner.class" "kafka.producer.DefaultPartitioner"}))
+; (def producer-conf (kf-producer/producer {"bootstrap.servers" "localhost:9092"}
+; (kf-producer/byte-array-serializer) (kf-producer/byte-array-serializer)))
+(def producer-conf (kafka/create-connector [{:host "localhost" :port 9092}] {:flush-on-write true}))
+; ;
 ;
-
-(defn create-topic
-  [name]
-  (let [zk (kf-admin/zk-client "127.0.0.1:2181")]
-  (kf-admin/create-topic zk name)))
-
+; (defn create-topic
+;   [name]
+;   (let [zk (kf-admin/zk-client "127.0.0.1:2181")]
+;   (kf-admin/create-topic zk name)))
+;
 (defn send-to-kafka
   [msg]
-  (kf-producer/send-message producer-conf (kf-producer/message "butt" (.getBytes (json/encode msg)))))
+  (kafka/send-msg producer-conf "butt" (.getBytes (json/encode msg))))
+;   @(kf-producer/send producer-conf (kf-producer/record "butt" (.getBytes (json/encode msg)))))
 ;
 ; (defn run-osrm-server
 ;   []

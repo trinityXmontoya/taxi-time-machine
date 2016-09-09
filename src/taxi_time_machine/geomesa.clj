@@ -38,7 +38,7 @@
 ; "zkPath" "/geomesa/ds/kafka"
 ; "automated" "automated"}
 
-(defn add-simple-feature
+(defn add-simple-features
   "add a SimpleFeature to the producer every half second"
   [^SimpleFeatureType sft ^FeatureStore producerfs]
   (let [min-x -180
@@ -85,30 +85,27 @@
     [^SimpleFeatureType sft ^FeatureStore producerfs]
     (let [builder (SimpleFeatureBuilder. sft)
           feature-collection (DefaultFeatureCollection.)
-          rand (rand)
-          id "1000"]
+          identifier "1000"]
       (.add builder "Antonius")
       (.add builder (int (Math/round (* (rand) 110))))
       (.add builder (Date.))
       (.add builder (.read WKTUtils$/MODULE$ "POINT(-1 -1)"))
-      (let [feature (.buildFeature builder id)]
+      (let [feature (.buildFeature builder identifier)]
         (.add feature-collection feature)
         (.addFeatures producerfs feature-collection)
-
-        (let [ff (.getFilterFactory2 CommonFactoryFinder)
-              id-filter (.id ff (.featureId ff id))]
+        (let [^FilterFactory2 ff (CommonFactoryFinder/getFilterFactory2)
+              ^Filter id-filter (.id ff (.featureId ff identifier))]
           (.removeFeatures producerfs id-filter)))))
 
-  (defn print-features
+  (defn print-feature
     "prints out attribute values for a SimpleFeature"
     [^SimpleFeature f]
     (let [props (.iterator (.getProperties f))
           prop-count (.getAttributeCount f)]
-          (.print (System/out) (str "fid: " (.getId f)))
+          (println (str "fid: " (.getId f)))
           (loop [i prop-count]
             (let [prop-name (.getName (.next props))]
-              (.print (System/out) (str " | " prop-name ":" (.getAttribute f prop-name))))))
-          (.println (System/out)))
+              (println (str " | " prop-name ":" (.getAttribute f prop-name)))))))
 
   (defn -main
     [^String[] args]
@@ -134,7 +131,7 @@
             zk-path (or (ds-conf "zkPath") "/geomesa/ds/kafka")
             prepped-output-sft (KafkaDataStoreHelper/createStreamingSFT sft zk-path)
             ; only create the schema if it hasn't been created already
-            x (if (not (contains? (vector (.getTypeNames producer-ds)) sft-name)) (.createSchema producer-ds prepped-output-sft))
+            ; x (if (not (contains? (vector (.getTypeNames producer-ds)) sft-name)) (.createSchema producer-ds prepped-output-sft))
             ; the live consumer must be created before the producer writes features
             ; in order to read streaming data.
             ; i.e. the live consumer will only read data written after its instantiation
@@ -142,39 +139,39 @@
             producer-fs (.getFeatureSource producer-ds sft-name)
             ]
       ; creates and adds SimpleFeatures to the producer every 1/5th of a second
-      (.println (System/out) "Writing features to Kafka... refresh GeoServer layer preview to see changes")
+      (println "Writing features to Kafka... refresh GeoServer layer preview to see changes")
       (let [replay-start (Instant.)]
-        (.addSimpleFeatures sft producer-fs)
+        (add-simple-features sft producer-fs)
         (let [replay-end (Instant.)]
 
         ; read from Kafka after writing all the features.
         ; LIVE CONSUMER - will obtain the current state of SimpleFeatures
-        (.println (System/out) "\nConsuming with the live consumer...")
+        (println "\nConsuming with the live consumer...")
         (let [feature-collection (.getFeatures consumer-fs)]
-          (.println (System/out) (str (.size feature-collection) " features were written to Kafka"))
+          (println (str (.size feature-collection) " features were written to Kafka"))
 
-          (.addDeleteNewFeature sft producer-fs)
+          (add-delete-new-feature sft producer-fs)
 
 
           ; read from Kafka after writing all the features.
           ; LIVE CONSUMER - will obtain the current state of SimpleFeatures
-          (.println (System/out) "\nConsuming with the live consumer...")
+          (println "\nConsuming with the live consumer...")
           (let [feature-collection (.getFeatures consumer-fs)]
-            (.println (System/out) (str (.size feature-collection) " features were written to Kafka"))
+            (println (str (.size feature-collection) " features were written to Kafka"))
 
           ; the state of the two SimpleFeatures is real time here
-          (.println (System/out) "Here are the two SimpleFeatures that were obtained with the live consumer:")
+          (println "Here are the two SimpleFeatures that were obtained with the live consumer:")
           (let [feature-iterator (.features feature-collection)
                 feature1 (.next feature-iterator)
                 feature2 (.next feature-iterator)]
                 (.close feature-iterator)
-                (.printFeature feature1)
-                (.printFeature feature2)
+                (print-feature feature1)
+                (print-feature feature2)
 
             ; REPLAY CONSUMER - will obtain the state of SimpleFeatures at any specified time
             ; Replay consumer requires a ReplayConfig which takes a time range and a
             ; duration of time to process
-            (.println (System/out) "\nConsuming with the replay consumer...")
+            (println "\nConsuming with the replay consumer...")
             (let [read-behind (Duration. 1000); 1 second readBehind
                   rc (ReplayConfig. replay-start replay-end read-behind)
                   replay-sft (KafkaDataStoreHelper/createReplaySFT prepped-output-sft rc)]
@@ -187,15 +184,15 @@
                     query-time (.minus replay-end 5000)
                     feature-collection (.getFeatures replay-consumer-fs (ReplayTimeHelper/toFilter query-time))]
 
-                (.println (System/out) (str (.size feature-collection) " features were written to Kafka"))
-                (.println (System/out)"Here are the two SimpleFeatures that were obtained with the replay consumer:")
+                (println (str (.size feature-collection) " features were written to Kafka"))
+                (println"Here are the two SimpleFeatures that were obtained with the replay consumer:")
 
                 (let [feature-iterator (.features feature-collection)
                       feature1 (.next feature-iterator)
                       feature2 (.next feature-iterator)]
                       (.close feature-iterator)
-                      (.printFeature feature1)
-                      (.printFeature feature2)
+                      (print-feature feature1)
+                      (print-feature feature2)
 
                   (if (not (nil? (System/getProperty "clear")))
                     (.removeFeatures producer-fs (.INCLUDE Filter))
