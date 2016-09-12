@@ -71,7 +71,6 @@
    obj]
   (let [sf (build-simple-feature sft obj)
         feature-collection (DefaultFeatureCollection.)]
-        (println "iamthefeature" sf)
     (.add feature-collection sf)
     (.addFeatures producer-fs feature-collection)
     (.clear feature-collection)))
@@ -145,16 +144,15 @@
           ; LIVE CONSUMER - will obtain the current state of SimpleFeatures
           (println "\nConsuming with the live consumer...")
           (let [feature-collection (.getFeatures consumer-fs)]
+           (println "imthecollection" feature-collection)
             (println (str (.size feature-collection) " features were written to Kafka"))
 
           ; the state of the two SimpleFeatures is real time here
           (println "Here are the two SimpleFeatures that were obtained with the live consumer:")
           (let [feature-iterator (.features feature-collection)
-                feature1 (.next feature-iterator)
-                feature2 (.next feature-iterator)]
+                feature1 (.next feature-iterator)]
                 (.close feature-iterator)
-                (print-feature feature1)
-                (print-feature feature2))))))
+                (print-feature feature1))))))
 
 
             ;
