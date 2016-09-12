@@ -9,7 +9,9 @@
             [cheshire.core :as json]
             ; [clj-kafka.new.producer :as kf-producer]
             ; [clj-kafka.admin :as kf-admin]
-            [kafka-clj.client :as kafka]
+            ; [kafka-clj.client :as kafka]
+            [clj-time.coerce :as c]
+            [clj-time.format :as f]
             [clojure.java.shell :as shell])
   ; (:import [org.geotools.data DataStoreFinder])
   (:gen-class))
@@ -25,6 +27,12 @@
    :body (slurp "resources/public/index.html")})
 
   ;  (println DataStoreFinder)
+
+(def custom-formatter (f/formatter "yyyy-MM-dd HH:mm:ss"))
+(def ->java-date
+  [date]
+  (c/to-date (f/parse custom-formatter date)))
+
 
 ; ; OSRM
 (defn extract-geometry
@@ -52,15 +60,17 @@
   (let [fields [:vendor-id :pickup-datetime :dropoff-datetime :passenger-count
                 :trip-dist :pickup-lng :pickup-lat :rate-code-id :store-and-fwd-flag
                 :dropoff-lng :dropoff-lat :payment-type :fare-amt :extra :mta-tax
-                :tip-amt :tolls-amt :total-amt]]
-      (zipmap fields row)))
+                :tip-amt :tolls-amt :total-amt]
+       res (zipmap fields row)]
+       (assoc hash :pickup-datetime (->java-date (res :pickup-datetime))
+                   :dropoff-datetime (->java-date (res :dropoff-datetime)))))
 
 ;
 ; ; KAFKA
 ;
 ; (def producer-conf (kf-producer/producer {"bootstrap.servers" "localhost:9092"}
 ; (kf-producer/byte-array-serializer) (kf-producer/byte-array-serializer)))
-(def producer-conf (kafka/create-connector [{:host "localhost" :port 9092}] {:flush-on-write true}))
+; (def producer-conf (kafka/create-connector [{:host "localhost" :port 9092}] {:flush-on-write true}))
 ; ;
 ;
 ; (defn create-topic
@@ -68,9 +78,9 @@
 ;   (let [zk (kf-admin/zk-client "127.0.0.1:2181")]
 ;   (kf-admin/create-topic zk name)))
 ;
-(defn send-to-kafka
-  [msg]
-  (kafka/send-msg producer-conf "butt" (.getBytes (json/encode msg))))
+; (defn send-to-kafka
+;   [msg]
+;   (kafka/send-msg producer-conf "butt" (.getBytes (json/encode msg))))
 ;   @(kf-producer/send producer-conf (kf-producer/record "butt" (.getBytes (json/encode msg)))))
 ;
 ; (defn run-osrm-server
@@ -93,7 +103,8 @@
       row-as-hash (row->hash row)
       path (calc-path row-as-hash)
       res (merge row-as-hash {:path path})]
-      (send-to-kafka res)))
+      ; (send-to-kafka res)
+      ))
 
 ; (defn -main
 ;   [& args]
