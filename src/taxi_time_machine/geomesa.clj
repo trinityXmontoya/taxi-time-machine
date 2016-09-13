@@ -25,6 +25,7 @@
              (org.opengis.feature.type Name)
              (org.opengis.filter Filter
                                  FilterFactory2))
+  (:require [taxi-time-machine.core :as tc])
   (:gen-class))
 
 (def kafka-datastore-conf
@@ -39,10 +40,9 @@
        "dropoff-datetime:Date,"
        "passenger-count:Int,"
        "trip-dist:Double,"
-       "pickup-coords:Point:srid=4326,"
        "rate-code-id:Int,"
        "store-and-fwd-flag:String,"
-       "dropoff-coords:Point:srid=4326,"
+       "geom:LineString:srid=4326,"
        "payment-type:Int,"
        "fare-amt:Double,"
        "extra:Double,"
@@ -55,13 +55,15 @@
   "build SimpleFeature"
   [^SimpleFeatureType sft obj]
   (let [builder (SimpleFeatureBuilder. sft)
-        pickup-coords (.read WKTUtils$/MODULE$ (str "POINT(" (:pickup-lat obj) " " (:pickup-lng obj) ")"))
-        dropoff-coords (.read WKTUtils$/MODULE$ (str "POINT(" (:pickup-lat obj) " " (:pickup-lng obj) ")"))
-        obj (dissoc obj :pickup-lat :pickup-lng :dropoff-lat :dropoff-lng)]
+        ; pickup-coords (.read WKTUtils$/MODULE$ (str "POINT(" (:pickup-lat obj) " " (:pickup-lng obj) ")"))
+        ; dropoff-coords (.read WKTUtils$/MODULE$ (str "POINT(" (:pickup-lat obj) " " (:pickup-lng obj) ")"))
+        geom (obj :path)
+        obj (dissoc obj :pickup-lat :pickup-lng :dropoff-lat :dropoff-lng :path)]
       (doseq [attr obj]
         (.set builder (name (key attr)) (val attr)))
-      (.set builder "pickup-coords" pickup-coords)
-      (.set builder "dropoff-coords" dropoff-coords)
+      ; (.set builder "pickup-coords" pickup-coords)
+      ; (.set builder "dropoff-coords" dropoff-coords)
+      (.set builder "geom" geom)
     (.buildFeature builder nil)))
 
 (defn add-simple-feature
@@ -69,8 +71,10 @@
   [^SimpleFeatureType sft
    ^FeatureStore producer-fs
    obj]
+   (println "hereiam" obj)
   (let [sf (build-simple-feature sft obj)
         feature-collection (DefaultFeatureCollection.)]
+        (println "simplefeature here" sf)
     (.add feature-collection sf)
     (.addFeatures producer-fs feature-collection)
     (.clear feature-collection)))
@@ -104,7 +108,7 @@
 
       ; create the schema which creates a topic in Kafka
       ; (only needs to be done once)
-      (let [sft-name "KafkaQuickStartClojureTest"
+      (let [sft-name "KafkaQuickStartClojureTest7"
             sft-schema trip-schema
             sft (SimpleFeatureTypes/createType sft-name sft-schema)
             ; set zkPath to default if not specified
@@ -117,8 +121,7 @@
             ; i.e. the live consumer will only read data written after its instantiation
             consumer-fs (.getFeatureSource consumer-ds sft-name)
             producer-fs (.getFeatureSource producer-ds sft-name)
-            samples [{:tolls-amt "0", :pickup-lng "-73.981498718261719", :mta-tax "0.5", :store-and-fwd-flag "N", :extra "0.5", :dropoff-lat "40.782432556152344", :rate-code-id "1", :trip-dist "1.20", :pickup-lat "40.771186828613281", :dropoff-datetime #inst "2015-01-01T00:27:07.000-00:00", :passenger-count "1", :tip-amt "0", :dropoff-lng "-73.972816467285156", :fare-amt "7", :payment-type "2", :total-amt "8.3", :pickup-datetime #inst "2015-01-01T00:20:41.000-00:00", :vendor-id "1"}
-            {:tolls-amt "0.3", :pickup-lng "-74.981498718261719", :mta-tax "0.5", :store-and-fwd-flag "N", :extra "0.5", :dropoff-lat "40.782432556152344", :rate-code-id "1", :trip-dist "1.20", :pickup-lat "40.771186828613281", :dropoff-datetime #inst "2015-01-02T00:27:07.000-00:00", :passenger-count "1", :tip-amt "0", :dropoff-lng "-74.972816467285156", :fare-amt "7", :payment-type "2", :total-amt "8.3", :pickup-datetime #inst "2015-01-02T00:20:41.000-00:00", :vendor-id "1"}]]
+            samples [(tc/calc-path {:tolls-amt "0", :pickup-lng "-73.981498718261719", :mta-tax "0.5", :store-and-fwd-flag "N", :extra "0.5", :dropoff-lat "40.782432556152344", :rate-code-id "1", :trip-dist "1.20", :pickup-lat "40.771186828613281", :dropoff-datetime #inst "2015-01-01T00:27:07.000-00:00", :passenger-count "1", :tip-amt "0", :dropoff-lng "-73.972816467285156", :fare-amt "7", :payment-type "2", :total-amt "8.3", :pickup-datetime #inst "2015-01-01T00:20:41.000-00:00", :vendor-id "1"}) (tc/calc-path {:tolls-amt "0.3", :pickup-lng "-74.981498718261719", :mta-tax "0.5", :store-and-fwd-flag "N", :extra "0.5", :dropoff-lat "40.782432556152344", :rate-code-id "1", :trip-dist "1.20", :pickup-lat "40.771186828613281", :dropoff-datetime #inst "2015-01-02T00:27:07.000-00:00", :passenger-count "1", :tip-amt "0", :dropoff-lng "-74.972816467285156", :fare-amt "7", :payment-type "2", :total-amt "8.3", :pickup-datetime #inst "2015-01-02T00:20:41.000-00:00", :vendor-id "1"})]]
       ; creates and adds SimpleFeatures to the producer every 1/5th of a second
       (println "Writing features to Kafka... refresh GeoServer layer preview to see changes")
       (mapv #(add-simple-feature sft producer-fs %) samples)
@@ -152,26 +155,31 @@
           (let [feature-iterator (.features feature-collection)
                 feature1 (.next feature-iterator)]
                 (.close feature-iterator)
-                (print-feature feature1))))))
+                (print-feature feature1)
 
 
             ;
-            ; ; REPLAY CONSUMER - will obtain the state of SimpleFeatures at any specified time
-            ; ; Replay consumer requires a ReplayConfig which takes a time range and a
-            ; ; duration of time to process
-            ; (println "\nConsuming with the replay consumer...")
-            ; (let [read-behind (Duration. 1000); 1 second readBehind
-            ;       rc (ReplayConfig. replay-start replay-end read-behind)
-            ;       replay-sft (KafkaDataStoreHelper/createReplaySFT prepped-output-sft rc)]
-            ;   (.createSchema producer-ds replay-sft)
-            ;   (let [replay-consumer-fs (.getFeatureSource consumer-ds (.getName replay-sft))
-            ;         ; querying for the state of SimpleFeatures approximately 5 seconds before the replay-end.
-            ;         ; the ReplayKafkaConsumerFeatureSource will build the state of SimpleFeatures
-            ;         ; by processing all of the messages that were sent in between queryTime-readBehind and queryTime.
-            ;         ; only the messages in between replay-start and replay-end are cached.
-            ;         query-time (.minus replay-end 5000)
-            ;         feature-collection (.getFeatures replay-consumer-fs (ReplayTimeHelper/toFilter query-time))]
-            ;
+            ; REPLAY CONSUMER - will obtain the state of SimpleFeatures at any specified time
+            ; Replay consumer requires a ReplayConfig which takes a time range and a
+            ; duration of time to process
+            (println "\nConsuming with the replay consumer...")
+            (let [replay-end (.toInstant (DateTime. #inst "2015-01-03T00:20:41.000-00:00"))
+                  replay-begin (.toInstant (DateTime. #inst "2014-12-31T00:20:41.000-00:00"))
+                  read-behind (Duration. 1000); 1 second readBehind
+                  rc (ReplayConfig. replay-begin replay-end read-behind)
+                  replay-sft (KafkaDataStoreHelper/createReplaySFT prepped-output-sft rc)]
+              (.createSchema producer-ds replay-sft)
+              (let [replay-consumer-fs (.getFeatureSource consumer-ds (.getName replay-sft))
+                    ; querying for the state of SimpleFeatures approximately 5 seconds before the replay-end.
+                    ; the ReplayKafkaConsumerFeatureSource will build the state of SimpleFeatures
+                    ; by processing all of the messages that were sent in between queryTime-readBehind and queryTime.
+                    ; only the messages in between replay-start and replay-end are cached.
+                    query-time (.minus replay-end 5000)
+                    feature-collection (.getFeatures replay-consumer-fs (ReplayTimeHelper/toFilter query-time))]
+
+
+                    )))))))
+
             ;     (println (str (.size feature-collection) " features were written to Kafka"))
             ;     (println "Here are the two SimpleFeatures that were obtained with the replay consumer:")
             ;

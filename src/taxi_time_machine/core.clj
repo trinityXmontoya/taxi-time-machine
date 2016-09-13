@@ -13,6 +13,7 @@
             [clj-time.coerce :as c]
             [clj-time.format :as f]
             [clojure.java.shell :as shell])
+  (:import (org.locationtech.geomesa.utils.text WKTUtils$))
   ; (:import [org.geotools.data DataStoreFinder])
   (:gen-class))
 
@@ -29,7 +30,7 @@
   ;  (println DataStoreFinder)
 
 (def custom-formatter (f/formatter "yyyy-MM-dd HH:mm:ss"))
-(def ->java-date
+(defn ->java-date
   [date]
   (c/to-date (f/parse custom-formatter date)))
 
@@ -53,7 +54,10 @@
 
 (defn calc-path
   [vals]
-  (extract-geometry (get-route vals)))
+  (let [path (extract-geometry (get-route vals))
+        geom (.read WKTUtils$/MODULE$
+                      (str "LINESTRING(" (clojure.string/join "," (map #(str (first %) " " (second %)) (path "coordinates"))) ")"))]
+        (assoc vals :path geom)))
 
 (defn row->hash
   [row]
