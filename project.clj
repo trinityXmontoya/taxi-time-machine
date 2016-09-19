@@ -18,7 +18,7 @@
             [lein-environ "1.0.3"]
             [lein-localrepo "0.5.3"]]
   :ring {:handler taxi-time-machine.core/handler}
-  :main ^:skip-aot taxi-time-machine.geomesa
+  :main ^:skip-aot taxi-time-machine.core
   :target-path "target/%s"
   :repositories {"locationtech-releases" "https://repo.locationtech.org/content/groups/releases"
                  "geomesa-snapshots" "https://repo.locationtech.org/content/repositories/geomesa-snapshots"

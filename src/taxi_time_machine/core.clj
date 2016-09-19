@@ -10,6 +10,8 @@
             ; [clj-kafka.new.producer :as kf-producer]
             ; [clj-kafka.admin :as kf-admin]
             ; [kafka-clj.client :as kafka]
+            [taxi-time-machine.geomesa :as geomesa]
+            [clj-time.core :as t]
             [clj-time.coerce :as c]
             [clj-time.format :as f]
             [clojure.java.shell :as shell])
@@ -30,17 +32,12 @@
   ;  (println DataStoreFinder)
 
 (def custom-formatter (f/formatter "yyyy-MM-dd HH:mm:ss"))
-(defn ->java-date
-  [date]
-  (c/to-date (f/parse custom-formatter date)))
+(defn ->datetime [str] (f/parse custom-formatter str))
+(defn ->java-date [^org.joda.time.DateTime datetime] (c/to-date datetime))
 
 
 ; ; OSRM
-(defn extract-geometry
-  [res]
-  (get-in @res ["routes" 0 "geometry"]))
-;
-(defn get-route
+(defn calc-route
   [row]
   (let [base "http://127.0.0.1:5000/route/v1/driving/"
         url (str base (row :pickup-lng) "," (row :pickup-lat) ";"
@@ -52,12 +49,25 @@
           (error "processing response" error)
           (json/decode body))))))
 
-(defn calc-path
-  [vals]
-  (let [path (extract-geometry (get-route vals))
-        geom (.read WKTUtils$/MODULE$
-                      (str "LINESTRING(" (clojure.string/join "," (map #(str (first %) " " (second %)) (path "coordinates"))) ")"))]
-        (assoc vals :path geom)))
+(defn build-point
+  [coord]
+  (.read WKTUtils$/MODULE$ (str "POINT(" (clojure.string/join " " coord) ")")))
+
+(defn calc-trip-time
+  [start end]
+  (t/in-seconds (t/interval start end)))
+
+(defn calc-stops
+  [trip]
+  (let [route (calc-route trip)
+        coords (get-in @route ["routes" 0 "geometry" "coordinates"])
+        total-trip-secs (calc-trip-time (trip :pickup-datetime) (trip :dropoff-datetime))
+        secs-per-path (/ total-trip-secs (- (count coords) 1))
+        start (trip :pickup-datetime)]
+    (map-indexed (fn [i coord]
+                    (let [point (build-point coord)
+                          datetime (c/to-date (t/plus start (t/seconds (* secs-per-path i))))]
+                      {:geom point :datetime datetime})) coords)))
 
 (defn row->hash
   [row]
@@ -66,8 +76,8 @@
                 :dropoff-lng :dropoff-lat :payment-type :fare-amt :extra :mta-tax
                 :tip-amt :tolls-amt :total-amt]
        res (zipmap fields row)]
-       (assoc hash :pickup-datetime (->java-date (res :pickup-datetime))
-                   :dropoff-datetime (->java-date (res :dropoff-datetime)))))
+       (assoc res :pickup-datetime (->datetime (res :pickup-datetime))
+                   :dropoff-datetime (->datetime (res :dropoff-datetime)))))
 
 ;
 ; ; KAFKA
@@ -104,9 +114,20 @@
   []
   (println "im alive")
   (let [row ["1","2015-01-01 00:20:41","2015-01-01 00:27:07","1","1.20","-73.981498718261719","40.771186828613281","1","N","-73.972816467285156","40.782432556152344","2","7","0.5","0.5","0","0","8.3"]
-      row-as-hash (row->hash row)
-      path (calc-path row-as-hash)
-      res (merge row-as-hash {:path path})]
+
+        trip (row->hash row)
+
+        stops (calc-stops trip)
+        first-stop (first stops)
+
+        processed-trip (assoc (dissoc trip :pickup-datetime :dropoff-datetime :pickup-lat
+                                    :pickup-lng :dropoff-lat :dropoff-lng) :datetime (first-stop :datetime)
+                                                                           :geom (first-stop :geom))
+
+        ; res (merge row-as-hash {:stops stops})
+        ]
+        ; (println (drop 1 stops) processed-trip)
+    (geomesa/write-trip->kafka processed-trip (drop 1 stops))
       ; (send-to-kafka res)
       ))
 

@@ -10,3 +10,4 @@ pom.xml.asc
 .hgignore
 .hg/
 /profiles.clj
+yellow_tripdata_2015-01-06.csv

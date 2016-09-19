@@ -25,7 +25,6 @@
              (org.opengis.feature.type Name)
              (org.opengis.filter Filter
                                  FilterFactory2))
-  (:require [taxi-time-machine.core :as tc])
   (:gen-class))
 
 (def kafka-datastore-conf
@@ -36,13 +35,12 @@
 
 (def trip-schema
   (str "vendor-id:Int,"
-       "pickup-datetime:Date,"
-       "dropoff-datetime:Date,"
+       "datetime:Date,"
        "passenger-count:Int,"
        "trip-dist:Double,"
        "rate-code-id:Int,"
        "store-and-fwd-flag:String,"
-       "geom:LineString:srid=4326,"
+       "geom:Point:srid=4326,"
        "payment-type:Int,"
        "fare-amt:Double,"
        "extra:Double,"
@@ -53,18 +51,19 @@
 
 (defn build-simple-feature
   "build SimpleFeature"
-  [^SimpleFeatureType sft obj]
+  [^SimpleFeatureType sft obj id]
   (let [builder (SimpleFeatureBuilder. sft)
         ; pickup-coords (.read WKTUtils$/MODULE$ (str "POINT(" (:pickup-lat obj) " " (:pickup-lng obj) ")"))
         ; dropoff-coords (.read WKTUtils$/MODULE$ (str "POINT(" (:pickup-lat obj) " " (:pickup-lng obj) ")"))
-        geom (obj :path)
-        obj (dissoc obj :pickup-lat :pickup-lng :dropoff-lat :dropoff-lng :path)]
+        ; geom (obj :path)
+        ; obj (dissoc obj :pickup-lat :pickup-lng :dropoff-lat :dropoff-lng :path)
+        ]
       (doseq [attr obj]
         (.set builder (name (key attr)) (val attr)))
       ; (.set builder "pickup-coords" pickup-coords)
       ; (.set builder "dropoff-coords" dropoff-coords)
-      (.set builder "geom" geom)
-    (.buildFeature builder nil)))
+      ; (.set builder "geom" geom)
+    (.buildFeature builder id)))
 
 (defn add-simple-feature
   "add a SimpleFeature to the producer"
@@ -90,6 +89,40 @@
             (println (str " | " prop-name ":" (.getAttribute f prop-name)))))))
 
 
+
+(def ds-conf {"brokers" "localhost:9092"
+               "zookeepers" "localhost:2181"
+               "zkPath" "/geomesa/ds/kafka"
+               "automated" "automated"})
+
+(def zk-path (or (ds-conf "zkPath") "/geomesa/ds/kafka"))
+
+(def sft-name "KafkaQuickStartClojureTest10")
+(def sft (SimpleFeatureTypes/createType sft-name trip-schema))
+
+(def producer-ds (DataStoreFinder/getDataStore (merge ds-conf {"isProducer" true})))
+(def producer-fs (.getFeatureSource producer-ds sft-name))
+(def prepped-output-sft (KafkaDataStoreHelper/createStreamingSFT sft zk-path))
+
+(if (not (.contains (Arrays/asList (.getTypeNames producer-ds)) sft-name)) (.createSchema producer-ds prepped-output-sft))
+
+(defn write-trip->kafka
+  [trip points]
+  (let [orig-feature (build-simple-feature sft trip nil)
+        id (.getID orig-feature)
+        feature-collection (DefaultFeatureCollection.)]
+    (.add feature-collection orig-feature)
+    (map (fn [point]
+            (let [builder (SimpleFeatureBuilder. sft)]
+              (.init builder orig-feature)
+              (let [copy (.buildFeature builder id)]
+                (.set copy "geom" (point :point))
+                (.set copy "datetime" (point :datetime))
+                (.add feature-collection copy)))) points)
+    (.addFeatures producer-fs feature-collection)
+    (.clear feature-collection)))
+
+
   (defn -main
     ; [^String[] args]
     []
@@ -108,7 +141,7 @@
 
       ; create the schema which creates a topic in Kafka
       ; (only needs to be done once)
-      (let [sft-name "KafkaQuickStartClojureTest7"
+      (let [sft-name "KafkaQuickStartClojureTest10"
             sft-schema trip-schema
             sft (SimpleFeatureTypes/createType sft-name sft-schema)
             ; set zkPath to default if not specified
@@ -121,10 +154,16 @@
             ; i.e. the live consumer will only read data written after its instantiation
             consumer-fs (.getFeatureSource consumer-ds sft-name)
             producer-fs (.getFeatureSource producer-ds sft-name)
-            samples [(tc/calc-path {:tolls-amt "0", :pickup-lng "-73.981498718261719", :mta-tax "0.5", :store-and-fwd-flag "N", :extra "0.5", :dropoff-lat "40.782432556152344", :rate-code-id "1", :trip-dist "1.20", :pickup-lat "40.771186828613281", :dropoff-datetime #inst "2015-01-01T00:27:07.000-00:00", :passenger-count "1", :tip-amt "0", :dropoff-lng "-73.972816467285156", :fare-amt "7", :payment-type "2", :total-amt "8.3", :pickup-datetime #inst "2015-01-01T00:20:41.000-00:00", :vendor-id "1"}) (tc/calc-path {:tolls-amt "0.3", :pickup-lng "-74.981498718261719", :mta-tax "0.5", :store-and-fwd-flag "N", :extra "0.5", :dropoff-lat "40.782432556152344", :rate-code-id "1", :trip-dist "1.20", :pickup-lat "40.771186828613281", :dropoff-datetime #inst "2015-01-02T00:27:07.000-00:00", :passenger-count "1", :tip-amt "0", :dropoff-lng "-74.972816467285156", :fare-amt "7", :payment-type "2", :total-amt "8.3", :pickup-datetime #inst "2015-01-02T00:20:41.000-00:00", :vendor-id "1"})]]
+            ; samples [(tc/calc-path {:tolls-amt "0", :pickup-lng "-73.981498718261719", :mta-tax "0.5", :store-and-fwd-flag "N", :extra "0.5", :dropoff-lat "40.782432556152344", :rate-code-id "1", :trip-dist "1.20", :pickup-lat "40.771186828613281", :dropoff-datetime #inst "2015-01-01T00:27:07.000-00:00", :passenger-count "1", :tip-amt "0", :dropoff-lng "-73.972816467285156", :fare-amt "7", :payment-type "2", :total-amt "8.3", :pickup-datetime #inst "2015-01-01T00:20:41.000-00:00", :vendor-id "1"}) (tc/calc-path {:tolls-amt "0.3", :pickup-lng "-74.981498718261719", :mta-tax "0.5", :store-and-fwd-flag "N", :extra "0.5", :dropoff-lat "40.782432556152344", :rate-code-id "1", :trip-dist "1.20", :pickup-lat "40.771186828613281", :dropoff-datetime #inst "2015-01-02T00:27:07.000-00:00", :passenger-count "1", :tip-amt "0", :dropoff-lng "-74.972816467285156", :fare-amt "7", :payment-type "2", :total-amt "8.3", :pickup-datetime #inst "2015-01-02T00:20:41.000-00:00", :vendor-id "1"})]
+            samples []
+            ]
       ; creates and adds SimpleFeatures to the producer every 1/5th of a second
       (println "Writing features to Kafka... refresh GeoServer layer preview to see changes")
-      (mapv #(add-simple-feature sft producer-fs %) samples)
+
+      (doseq [sample samples]
+        (add-simple-feature sft producer-fs sample)
+        )
+      ; (mapv #(add-simple-feature sft producer-fs %) samples)
 
 
 
