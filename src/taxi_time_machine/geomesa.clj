@@ -25,30 +25,42 @@
              (org.opengis.feature.type Name)
              (org.opengis.filter Filter
                                  FilterFactory2))
+  (:require [environ.core :refer [env]])
   (:gen-class))
 
-(def kafka-datastore-conf
-  {"brokers" "localhost:9092"
-  "zookeepers" "localhost:2181"
-  "zkPath" "/geomesa/ds/kafka"
-  "automated" "automated"})
+; conf
+(def ds-conf
+  {"brokers" (env :kafka-brokers)
+   "zookeepers" (env :zookeepers)
+   "zkPath" (env :zk-path)
+   "automated" "automated"})
+(def sft-name (env :sft-name))
+(def producer-ds (DataStoreFinder/getDataStore (merge ds-conf {"isProducer" true})))
+(def consumer-ds (DataStoreFinder/getDataStore (merge ds-conf {"isProducer" false})))
 
 (def trip-schema
-  (str "vendor-id:Int,"
-       "dtg:Date:index=true,"
-       "passenger-count:Int,"
-       "trip-dist:Double,"
-       "rate-code-id:Int,"
-       "store-and-fwd-flag:String,"
-       "geom:Point:srid=4326:index=true,"
-       "payment-type:Int,"
-       "fare-amt:Double,"
-       "extra:Double,"
-       "mta-tax:Double,"
-       "tip-amt:Double:index=true,"
-       "tolls-amt:Double,"
-       "total-amt:Double:index=true"))
+ (str "vendor-id:Int,"
+      "dtg:Date:index=true,"
+      "passenger-count:Int,"
+      "trip-dist:Double,"
+      "rate-code-id:Int,"
+      "store-and-fwd-flag:String,"
+      "geom:Point:srid=4326:index=true,"
+      "payment-type:Int,"
+      "fare-amt:Double,"
+      "extra:Double,"
+      "mta-tax:Double,"
+      "tip-amt:Double:index=true,"
+      "tolls-amt:Double,"
+      "total-amt:Double:index=true"))
 
+(def sft (SimpleFeatureTypes/createType sft-name trip-schema))
+(def prepped-output-sft (KafkaDataStoreHelper/createStreamingSFT sft (ds-conf "zkPath")))
+(if (not (.contains (Arrays/asList (.getTypeNames producer-ds)) sft-name))
+ (.createSchema producer-ds prepped-output-sft))
+(def producer-fs (.getFeatureSource producer-ds sft-name))
+
+;abstract SimpleFeature fns
 (defn build-simple-feature
   "build SimpleFeature"
   [^SimpleFeatureType sft obj id]
@@ -80,24 +92,7 @@
           (let [prop-name (.getName (.next props))]
             (println (str " | " prop-name ":" (.getAttribute f prop-name)))))))
 
-
-
-; conf
-
-(def ds-conf {"brokers" "localhost:9092"
-               "zookeepers" "localhost:2181"
-               "zkPath" "/geomesa/ds/kafka"
-               "automated" "automated"})
-(def zk-path (or (ds-conf "zkPath") "/geomesa/ds/kafka"))
-(def sft-name "KafkaQuickStartClojureTest12")
-(def producer-ds (DataStoreFinder/getDataStore (merge ds-conf {"isProducer" true})))
-(def consumer-ds (DataStoreFinder/getDataStore (merge ds-conf {"isProducer" false})))
-(def sft (SimpleFeatureTypes/createType sft-name trip-schema))
-(def prepped-output-sft (KafkaDataStoreHelper/createStreamingSFT sft zk-path))
-(if (not (.contains (Arrays/asList (.getTypeNames producer-ds)) sft-name))
- (.createSchema producer-ds prepped-output-sft))
-(def producer-fs (.getFeatureSource producer-ds sft-name))
-
+; main
 (defn write-trip->kafka
   [trip points]
   (let [orig-feature (build-simple-feature sft trip nil)

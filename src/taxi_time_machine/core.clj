@@ -1,21 +1,25 @@
 (ns taxi-time-machine.core
-  (:require [org.httpkit.server :refer [run-server]]
-            [org.httpkit.client :as http]
+  (:require [org.httpkit.client :as http]
             [environ.core :refer [env]]
             [taoensso.timbre :as timbre]
-            [ring.middleware.file :refer [wrap-file]]
-            [ring.middleware.not-modified :refer [wrap-not-modified]]
-            [clojure.java.io :as io]
             [cheshire.core :as json]
             [taxi-time-machine.geomesa :as geomesa]
             [clj-time.core :as t]
             [clj-time.coerce :as c]
             [clj-time.format :as f]
-            [clojure.java.shell :as shell])
+            [clojure.java.shell :as shell]
+            [clojure.data.csv :as csv]
+            [clojure.java.io :as io])
   (:import (org.locationtech.geomesa.utils.text WKTUtils$))
   (:gen-class))
 
 (timbre/refer-timbre)
+
+; date helpers
+(def custom-formatter (f/formatter "yyyy-MM-dd HH:mm:ss"))
+(defn ->datetime [str] (f/parse custom-formatter str))
+(defn ->java-date [^org.joda.time.DateTime datetime] (c/to-date datetime))
+(defn calc-trip-time [start end] (t/in-seconds (t/interval start end)))
 
 ; formatters
 (defn row->hash
@@ -27,12 +31,6 @@
        res (zipmap fields row)]
        (assoc res  :pickup-datetime (->datetime (res :pickup-datetime))
                    :dropoff-datetime (->datetime (res :dropoff-datetime)))))
-
-; date helpers
-(def custom-formatter (f/formatter "yyyy-MM-dd HH:mm:ss"))
-(defn ->datetime [str] (f/parse custom-formatter str))
-(defn ->java-date [^org.joda.time.DateTime datetime] (c/to-date datetime))
-(defn calc-trip-time [start end] (t/in-seconds (t/interval start end)))
 
 ; ; OSRM
 (defn calc-route
@@ -80,6 +78,11 @@
 ;   [name]
 ;   (let [zk (kf-admin/zk-client "127.0.0.1:2181")]
 ;   (kf-admin/create-topic zk name)))
+(defn clean-trip
+  [trip stop]
+  (assoc (dissoc trip :pickup-datetime :dropoff-datetime :pickup-lat
+                      :pickup-lng :dropoff-lat :dropoff-lng) :dtg (stop :dtg)
+                                                             :geom (stop :geom)))
 
 (defn -main
   []
@@ -87,9 +90,15 @@
         trip (row->hash row)
         stops (calc-stops trip)
         first-stop (first stops)
-        processed-trip (assoc (dissoc trip :pickup-datetime :dropoff-datetime :pickup-lat
-                                    :pickup-lng :dropoff-lat :dropoff-lng) :dtg (first-stop :dtg)
-                                                                           :geom (first-stop :geom))]
-    ; (geomesa/write-trip->kafka processed-trip (drop 1 stops))
-    (geomesa/replay)
-      ))
+        processed-trip (clean-trip trip first-stop)
+        ; rows (csv/read-csv (io/reader "yellow_tripdata_2015-01-06.csv"))
+        ]
+    ; (doseq [row rows]
+    ;     (let [trip (row->hash row)
+    ;           stops (calc-stops trip)
+    ;           first-stop (first stops)
+    ;           processed-trip (clean-trip trip first-stop)]
+    ;       (geomesa/write-trip->kafka processed-trip (drop 1 stops))))
+
+    (geomesa/write-trip->kafka processed-trip (drop 1 stops))
+    (geomesa/replay)))
