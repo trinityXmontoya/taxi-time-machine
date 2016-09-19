@@ -74,7 +74,6 @@
   [^SimpleFeatureType sft
    ^FeatureStore producer-fs
    obj]
-   (println "hereiam" obj)
   (let [sf (build-simple-feature sft obj)
         feature-collection (DefaultFeatureCollection.)]
         (println "simplefeature here" sf)
@@ -110,10 +109,8 @@
     (.clear feature-collection)))
 
 (defn replay
-  []
-  (let [replay-begin (.toInstant (DateTime. #inst "2014-12-31T19:12:41"))
-        replay-end (.toInstant (DateTime. #inst "2014-12-31T19:21:07"))
-        read-behind (Duration. 1000); 1 second readBehind
+  [replay-begin replay-end read-behind-ms]
+  (let [read-behind (Duration. read-behind-ms); 1 second readBehind
         rc (ReplayConfig. replay-begin replay-end read-behind)
         replay-sft (KafkaDataStoreHelper/createReplaySFT prepped-output-sft rc)]
     (.createSchema producer-ds replay-sft)

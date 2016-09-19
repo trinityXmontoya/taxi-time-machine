@@ -100,5 +100,9 @@
     ;           processed-trip (clean-trip trip first-stop)]
     ;       (geomesa/write-trip->kafka processed-trip (drop 1 stops))))
 
+    ; (replay (.toInstant (DateTime. #inst "2014-12-31T19:12:41"))
+    ;         (.toInstant (DateTime. #inst "2014-12-31T19:21:07"))
+    ;         1000)
+
     (geomesa/write-trip->kafka processed-trip (drop 1 stops))
     (geomesa/replay)))
