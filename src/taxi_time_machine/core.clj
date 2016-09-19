@@ -67,7 +67,7 @@
     (map-indexed (fn [i coord]
                     (let [point (build-point coord)
                           datetime (c/to-date (t/plus start (t/seconds (* secs-per-path i))))]
-                      {:geom point :datetime datetime})) coords)))
+                      {:geom point :dtg datetime})) coords)))
 
 (defn row->hash
   [row]
@@ -121,13 +121,14 @@
         first-stop (first stops)
 
         processed-trip (assoc (dissoc trip :pickup-datetime :dropoff-datetime :pickup-lat
-                                    :pickup-lng :dropoff-lat :dropoff-lng) :datetime (first-stop :datetime)
+                                    :pickup-lng :dropoff-lat :dropoff-lng) :dtg (first-stop :dtg)
                                                                            :geom (first-stop :geom))
 
         ; res (merge row-as-hash {:stops stops})
         ]
         ; (println (drop 1 stops) processed-trip)
     (geomesa/write-trip->kafka processed-trip (drop 1 stops))
+    ; (geomesa/replay)
       ; (send-to-kafka res)
       ))
 

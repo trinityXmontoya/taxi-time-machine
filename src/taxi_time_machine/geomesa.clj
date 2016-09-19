@@ -35,19 +35,19 @@
 
 (def trip-schema
   (str "vendor-id:Int,"
-       "datetime:Date,"
+       "dtg:Date:index=true,"
        "passenger-count:Int,"
        "trip-dist:Double,"
        "rate-code-id:Int,"
        "store-and-fwd-flag:String,"
-       "geom:Point:srid=4326,"
+       "geom:Point:srid=4326:index=true,"
        "payment-type:Int,"
        "fare-amt:Double,"
        "extra:Double,"
        "mta-tax:Double,"
-       "tip-amt:Double,"
+       "tip-amt:Double:index=true,"
        "tolls-amt:Double,"
-       "total-amt:Double"))
+       "total-amt:Double:index=true"))
 
 (defn build-simple-feature
   "build SimpleFeature"
@@ -90,6 +90,8 @@
 
 
 
+
+
 (def ds-conf {"brokers" "localhost:9092"
                "zookeepers" "localhost:2181"
                "zkPath" "/geomesa/ds/kafka"
@@ -97,14 +99,20 @@
 
 (def zk-path (or (ds-conf "zkPath") "/geomesa/ds/kafka"))
 
-(def sft-name "KafkaQuickStartClojureTest10")
-(def sft (SimpleFeatureTypes/createType sft-name trip-schema))
-
+(def sft-name "KafkaQuickStartClojureTest12")
 (def producer-ds (DataStoreFinder/getDataStore (merge ds-conf {"isProducer" true})))
-(def producer-fs (.getFeatureSource producer-ds sft-name))
+(def consumer-ds (DataStoreFinder/getDataStore (merge ds-conf {"isProducer" false})))
+(def sft (SimpleFeatureTypes/createType sft-name trip-schema))
 (def prepped-output-sft (KafkaDataStoreHelper/createStreamingSFT sft zk-path))
 
-(if (not (.contains (Arrays/asList (.getTypeNames producer-ds)) sft-name)) (.createSchema producer-ds prepped-output-sft))
+(if (not (.contains (Arrays/asList (.getTypeNames producer-ds)) sft-name))
+ (.createSchema producer-ds prepped-output-sft))
+
+
+
+(def producer-fs (.getFeatureSource producer-ds sft-name))
+
+
 
 (defn write-trip->kafka
   [trip points]
@@ -115,12 +123,42 @@
     (map (fn [point]
             (let [builder (SimpleFeatureBuilder. sft)]
               (.init builder orig-feature)
+              (.set builder "geom" (point :geom))
+              (.set builder "dtg" (point :dtg))
               (let [copy (.buildFeature builder id)]
-                (.set copy "geom" (point :point))
-                (.set copy "datetime" (point :datetime))
                 (.add feature-collection copy)))) points)
     (.addFeatures producer-fs feature-collection)
-    (.clear feature-collection)))
+    (.clear feature-collection)
+
+    ))
+
+
+; "2015-01-01T00:19:41.000-00:00","2015-01-01T00:28:07.000-00:00"
+; 2014-12-31T19:19:41
+(defn replay
+  []
+  (let [replay-begin (.toInstant (DateTime. #inst "2014-12-31T19:12:41"))
+        replay-end (.toInstant (DateTime. #inst "2014-12-31T19:21:07"))
+        read-behind (Duration. 1000); 1 second readBehind
+        rc (ReplayConfig. replay-begin replay-end read-behind)
+        replay-sft (KafkaDataStoreHelper/createReplaySFT prepped-output-sft rc)]
+    (.createSchema producer-ds replay-sft)
+    (let [replay-consumer-fs (.getFeatureSource consumer-ds (.getName replay-sft))
+          ; querying for the state of SimpleFeatures approximately 5 seconds before the replay-end.
+          ; the ReplayKafkaConsumerFeatureSource will build the state of SimpleFeatures
+          ; by processing all of the messages that were sent in between queryTime-readBehind and queryTime.
+          ; only the messages in between replay-start and replay-end are cached.
+          query-time (.minus replay-end 10000)
+          feature-collection (.getFeatures replay-consumer-fs (ReplayTimeHelper/toFilter query-time))]
+      (println (str (.size feature-collection) " features were written to Kafka"))
+      (println "Here are the two SimpleFeatures that were obtained with the replay consumer:")
+      (let [feature-iterator (.features feature-collection)
+           feature1 (.next feature-iterator)
+           feature2 (.next feature-iterator)]
+           (.close feature-iterator)
+           (print-feature feature1)
+           (print-feature feature2)))))
+
 
 
   (defn -main
