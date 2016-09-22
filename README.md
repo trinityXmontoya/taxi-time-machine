@@ -2,7 +2,10 @@
 
 Go back in time to see what NYers are really up to...
 
-### Status: Working in progress
+### Background
+Geomesa-backed replay tool for NYC [2015 Yellow Taxi Trip Data](https://data.cityofnewyork.us/view/ba8s-jw6u)
+
+#### Status: Work in progress
 
 Prerequisites
 -------------

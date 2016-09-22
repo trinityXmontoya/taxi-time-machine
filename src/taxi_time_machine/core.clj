@@ -86,23 +86,22 @@
 
 (defn -main
   []
-  (let [row ["1","2015-01-01 00:20:41","2015-01-01 00:27:07","1","1.20","-73.981498718261719","40.771186828613281","1","N","-73.972816467285156","40.782432556152344","2","7","0.5","0.5","0","0","8.3"]
-        trip (row->hash row)
-        stops (calc-stops trip)
-        first-stop (first stops)
-        processed-trip (clean-trip trip first-stop)
-        ; rows (csv/read-csv (io/reader "yellow_tripdata_2015-01-06.csv"))
+  (let [rows (csv/read-csv (io/reader "yellow_tripdata_2015-01-06.csv"))
+        ; row ["1","2015-01-01 00:20:41","2015-01-01 00:27:07","1","1.20","-73.981498718261719","40.771186828613281","1","N","-73.972816467285156","40.782432556152344","2","7","0.5","0.5","0","0","8.3"]
+        ; trip (row->hash row)
+        ; stops (calc-stops trip)
+        ; first-stop (first stops)
+        ; processed-trip (clean-trip trip first-stop)
         ]
-    ; (doseq [row rows]
-    ;     (let [trip (row->hash row)
-    ;           stops (calc-stops trip)
-    ;           first-stop (first stops)
-    ;           processed-trip (clean-trip trip first-stop)]
-    ;       (geomesa/write-trip->kafka processed-trip (drop 1 stops))))
+    (doseq [row rows]
+        (let [trip (row->hash row)
+              stops (calc-stops trip)
+              first-stop (first stops)
+              processed-trip (clean-trip trip first-stop)]
+          (geomesa/write-trip->kafka processed-trip (drop 1 stops))))
 
-    ; (replay (.toInstant (DateTime. #inst "2014-12-31T19:12:41"))
+    ; (geomesa/write-trip->kafka processed-trip (drop 1 stops))
+    ; (geomesa/replay (.toInstant (DateTime. #inst "2014-12-31T19:12:41"))
     ;         (.toInstant (DateTime. #inst "2014-12-31T19:21:07"))
     ;         1000)
-
-    (geomesa/write-trip->kafka processed-trip (drop 1 stops))
-    (geomesa/replay)))
+    ))
